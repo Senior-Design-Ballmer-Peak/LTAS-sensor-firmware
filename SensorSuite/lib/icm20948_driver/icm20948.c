@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include "esp_system.h"
 #include "driver/i2c.h"
+#include "esp_log.h"
 
 #include "icm20948.h"
 
@@ -33,6 +34,9 @@
 #define ICM20948_PWR_MGMT_1    0x06
 #define ICM20948_WHO_AM_I      0x00
 #define ICM20948_REG_BANK_SEL  0x7F
+
+static const char *TAG = "Driver err";
+static const char *TAG2 = "I2C err";
 
 typedef struct {
 	i2c_port_t bus;
@@ -77,20 +81,36 @@ icm20948_read(icm20948_handle_t sensor, const uint8_t reg_start_addr, uint8_t *c
 
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	ret = i2c_master_start(cmd);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 1");
 	assert(ESP_OK == ret);
 	ret = i2c_master_write_byte(cmd, sens->dev_addr | I2C_MASTER_WRITE, true);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 2");
 	assert(ESP_OK == ret);
 	ret = i2c_master_write_byte(cmd, reg_start_addr, true);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 3");
 	assert(ESP_OK == ret);
 	ret = i2c_master_start(cmd);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 4");
 	assert(ESP_OK == ret);
 	ret = i2c_master_write_byte(cmd, sens->dev_addr | I2C_MASTER_READ, true);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 5");
 	assert(ESP_OK == ret);
 	ret = i2c_master_read(cmd, data_buf, data_len, I2C_MASTER_LAST_NACK);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 6");
 	assert(ESP_OK == ret);
 	ret = i2c_master_stop(cmd);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 7");
 	assert(ESP_OK == ret);
 	ret = i2c_master_cmd_begin(sens->bus, cmd, 1000 / portTICK_PERIOD_MS);
+	if (ret != ESP_OK)
+		ESP_LOGE(TAG2, "spot 8");
 	i2c_cmd_link_delete(cmd);
 
 	return ret;
@@ -156,12 +176,18 @@ icm20948_reset(icm20948_handle_t sensor)
 	uint8_t tmp;
 
 	ret = icm20948_read(sensor, ICM20948_PWR_MGMT_1, &tmp, 1);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "read failed");
 		return ret;
+	}
+		
 	tmp |= 0x80;
 	ret = icm20948_write(sensor, ICM20948_PWR_MGMT_1, &tmp, 1);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "write failed");
 		return ret;
+	}
+		
 
 	return ret;
 }

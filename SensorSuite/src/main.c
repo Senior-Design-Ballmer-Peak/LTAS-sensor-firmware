@@ -7,9 +7,12 @@
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
-#define I2C_MASTER_FREQ_HZ 100000    /*!< I2C master clock frequency */
+#define I2C_MASTER_FREQ_HZ 50000    /*!< I2C master clock frequency */
 
 static const char *TAG = "icm test";
+
+static const char *TAG1 = "gyro test";
+static const char *TAG2 = "accel test";
 static icm20948_handle_t icm20948 = NULL;
 
 /**
@@ -51,34 +54,55 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 	ESP_LOGI(TAG, "ICM20948 creation successfull!");
 
 	ret = icm20948_reset(icm20948);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "reset failed");
 		return ret;
+	}
+		
 
 	vTaskDelay(10 / portTICK_PERIOD_MS);
 
 	ret = icm20948_wake_up(icm20948);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "wake up failed");
 		return ret;
+	}
+		
 
 	ret = icm20948_set_bank(icm20948, 0);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "set bank failed");
 		return ret;
+	}
+		
 
 	uint8_t device_id;
 	ret = icm20948_get_deviceid(icm20948, &device_id);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "get deviceid failed");
 		return ret;
+	}
+		
 	ESP_LOGI(TAG, "0x%02X", device_id);
-	if (device_id != ICM20948_WHO_AM_I_VAL)
+	if (device_id != ICM20948_WHO_AM_I_VAL){
+		ESP_LOGE(TAG, "incorrect device_id");
 		return ESP_FAIL;
+	}
+		
 
 	ret = icm20948_set_gyro_fs(icm20948, gyro_fs);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "set gyro failed");
 		return ESP_FAIL;
+	}
+		
 
 	ret = icm20948_set_acce_fs(icm20948, acce_fs);
-	if (ret != ESP_OK)
+	if (ret != ESP_OK){
+		ESP_LOGE(TAG, "set accel failed");
 		return ESP_FAIL;
+	}
+		
 
 	return ret;
 }
@@ -86,7 +110,7 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 void
 icm_read_task(void *args)
 {
-	esp_err_t ret = icm20948_configure(ACCE_FS_2G, GYRO_FS_1000DPS);
+	esp_err_t ret = icm20948_configure(ACCE_FS_2G, GYRO_FS_250DPS);
 	if (ret != ESP_OK) {
 		ESP_LOGE(TAG, "ICM configuration failure");
 		vTaskDelete(NULL);
@@ -95,14 +119,14 @@ icm_read_task(void *args)
 
 	icm20948_acce_value_t acce;
 	icm20948_gyro_value_t gyro;
-	for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < 1000; ++i) {
 		ret = icm20948_get_acce(icm20948, &acce);
 		if (ret == ESP_OK)
-			ESP_LOGI(TAG, "ax: %lf ay: %lf az: %lf", acce.acce_x, acce.acce_y, acce.acce_z);
+			ESP_LOGI(TAG2, "ax: %lf ay: %lf az: %lf", acce.acce_x, acce.acce_y, acce.acce_z);
 		ret = icm20948_get_gyro(icm20948, &gyro);
 		if (ret == ESP_OK)
-			ESP_LOGI(TAG, "gx: %lf gy: %lf gz: %lf", gyro.gyro_x, gyro.gyro_y, gyro.gyro_z);
-		vTaskDelay(100 / portTICK_PERIOD_MS);
+			ESP_LOGI(TAG1, "gx: %lf gy: %lf gz: %lf", gyro.gyro_x, gyro.gyro_y, gyro.gyro_z);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 
 	vTaskDelete(NULL);
