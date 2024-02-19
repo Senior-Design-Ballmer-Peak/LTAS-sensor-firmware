@@ -1,15 +1,17 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "icm20948.h"
+#include "rf69.h"
 
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 50000    /*!< I2C master clock frequency */
 
-static const char *TAG = "icm test";
+static const char *TAG = "test";
 
 static const char *TAG1 = "gyro test";
 static const char *TAG2 = "accel test";
@@ -107,6 +109,7 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 	return ret;
 }
 
+
 void
 icm_read_task(void *args)
 {
@@ -132,12 +135,62 @@ icm_read_task(void *args)
 	vTaskDelete(NULL);
 }
 
+void tx_task(void *pvParameter)
+{
+	ESP_LOGI(pcTaskGetName(0), "Start");
+	int packetnum = 0;	// packet counter, we increment per xmission
+	while(1) {
+
+		char radiopacket[64] = "Hello World #";
+		sprintf(radiopacket, "Hello World #%d", packetnum++);
+		ESP_LOGI(pcTaskGetName(0), "Sending %s", radiopacket);
+  
+		// Send a message!
+		send((uint8_t *)radiopacket, strlen(radiopacket));
+		waitPacketSent();
+
+		// Now wait for a reply
+		uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+		uint8_t len = sizeof(buf);
+
+		if (waitAvailableTimeout(500))	{
+			// Should be a reply message for us now   
+			if (recv(buf, &len)) {
+				ESP_LOGI(pcTaskGetName(0), "Got a reply: %s", (char*)buf);
+			} else {
+				ESP_LOGE(pcTaskGetName(0), "Receive failed");
+			}
+		} else {
+			ESP_LOGE(pcTaskGetName(0), "No reply, is another RFM69 listening?");
+		}
+		vTaskDelay(1000/portTICK_PERIOD_MS);
+	} // end while
+
+	// never reach here
+	vTaskDelete( NULL );
+}
+
 void
 app_main(void)
 {
+	if (!init()) {
+		ESP_LOGE(TAG, "RFM69 radio init failed");
+		while (1) { vTaskDelay(1); }
+	}
+	ESP_LOGI(TAG, "RFM69 radio init OK!");
+  
+	float freq = 915.0;
+	ESP_LOGW(TAG, "Set frequency to %.1fMHz", freq);
+	if (!setFrequency(freq)) {
+		ESP_LOGE(TAG, "setFrequency failed");
+		while (1) { vTaskDelay(1); }
+	}
+	ESP_LOGI(TAG, "RFM69 radio setFrequency OK!");
+
 	ESP_LOGI(TAG, "Starting ICM test");
 	esp_err_t ret = i2c_bus_init();
 	ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
 
 	xTaskCreate(icm_read_task, "icm read task", 1024 * 10, NULL, 15, NULL);
+	xTaskCreate(&tx_task, "tx_task", 1024*3, NULL, 1, NULL);
 }

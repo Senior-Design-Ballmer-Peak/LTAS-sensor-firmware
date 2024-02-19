@@ -180,6 +180,7 @@ static const ModemConfig MODEM_CONFIG_TABLE[] =
 
 };
 
+#define HOST_ID SPI1_HOST
 
 // SPI Stuff
 #if CONFIG_SPI2_HOST
@@ -188,6 +189,8 @@ static const ModemConfig MODEM_CONFIG_TABLE[] =
 #define HOST_ID SPI3_HOST
 #endif
 static spi_device_handle_t _handle;
+
+
 
 // Arduino compatible macros
 #define LOW 0
