@@ -13,6 +13,17 @@
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 50000    /*!< I2C master clock frequency */
 
+//actual types and function definitions
 
+typedef struct {
+    float latitude;
+    float longitude;
+    float altitude;
+    int satellites;
+} gps_data_t;
+
+esp_err_t gps_init(void);
+esp_err_t i2c_bus_init(void);
+esp_err_t gps_read_data(gps_data_t* data);
 
 #endif //SENSORSUITE_ZOEM8Q_H
