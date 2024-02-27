@@ -6,7 +6,18 @@
 #include "icm20948.h"
 #include "rf69.h"
 #include "zoem8q.h"
+#include "bme280.h"
 
+
+#define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
+#define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
+#define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
+#define I2C_MASTER_FREQ_HZ 50000    /*!< I2C master clock frequency */
+
+#define TAG_BME280 "BME280"
+
+#define I2C_MASTER_ACK 0
+#define I2C_MASTER_NACK 1
 
 static const char *TAG = "test";
 
@@ -14,10 +25,90 @@ static const char *TAG1 = "gyro test";
 static const char *TAG2 = "accel test";
 static icm20948_handle_t icm20948 = NULL;
 
+
+
 /**
  * @brief i2c master initialization
  */
+esp_err_t i2c_bus_init(void)
+{
+    i2c_config_t conf;
+    conf.mode = I2C_MODE_MASTER;
+    conf.sda_io_num = (gpio_num_t)I2C_MASTER_SDA_IO;
+    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.scl_io_num = (gpio_num_t)I2C_MASTER_SCL_IO;
+    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+    conf.clk_flags = I2C_SCLK_SRC_FLAG_FOR_NOMAL;
 
+    esp_err_t ret = i2c_param_config(I2C_MASTER_NUM, &conf);
+    if (ret != ESP_OK)
+        return ret;
+
+    return i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0);
+}
+
+s8 BME280_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
+{
+	s32 iError = BME280_INIT_VALUE;
+
+	esp_err_t espRc;
+	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+	i2c_master_start(cmd);
+	i2c_master_write_byte(cmd, (dev_addr << 1) | I2C_MASTER_WRITE, true);
+
+	i2c_master_write_byte(cmd, reg_addr, true);
+	i2c_master_write(cmd, reg_data, cnt, true);
+	i2c_master_stop(cmd);
+
+	espRc = i2c_master_cmd_begin(I2C_NUM_0, cmd, 10/portTICK_PERIOD_MS);
+	if (espRc == ESP_OK) {
+		iError = SUCCESS;
+	} else {
+		iError = FAIL();
+	}
+	i2c_cmd_link_delete(cmd);
+
+	return (s8)iError;
+}
+
+s8 BME280_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
+{
+	s32 iError = BME280_INIT_VALUE;
+	esp_err_t espRc;
+
+	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+	i2c_master_start(cmd);
+	i2c_master_write_byte(cmd, (dev_addr << 1) | I2C_MASTER_WRITE, true);
+	i2c_master_write_byte(cmd, reg_addr, true);
+
+	i2c_master_start(cmd);
+	i2c_master_write_byte(cmd, (dev_addr << 1) | I2C_MASTER_READ, true);
+
+	if (cnt > 1) {
+		i2c_master_read(cmd, reg_data, cnt-1, I2C_MASTER_ACK);
+	}
+	i2c_master_read_byte(cmd, reg_data+cnt-1, I2C_MASTER_NACK);
+	i2c_master_stop(cmd);
+
+	espRc = i2c_master_cmd_begin(I2C_NUM_0, cmd, 10/portTICK_PERIOD_MS);
+	if (espRc == ESP_OK) {
+		iError = SUCCESS;
+	} else {
+		iError = FAIL();
+	}
+
+	i2c_cmd_link_delete(cmd);
+
+	return (s8)iError;
+}
+
+void BME280_delay_msek(u32 msek)
+{
+	vTaskDelay(msek/portTICK_PERIOD_MS);
+}
 
 static esp_err_t
 icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
