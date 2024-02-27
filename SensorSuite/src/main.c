@@ -66,7 +66,7 @@ s8 BME280_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 	if (espRc == ESP_OK) {
 		iError = SUCCESS;
 	} else {
-		iError = FAIL();
+		iError = FAIL;
 	}
 	i2c_cmd_link_delete(cmd);
 
@@ -97,7 +97,7 @@ s8 BME280_I2C_bus_read(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 	if (espRc == ESP_OK) {
 		iError = SUCCESS;
 	} else {
-		iError = FAIL();
+		iError = FAIL;
 	}
 
 	i2c_cmd_link_delete(cmd);
@@ -312,5 +312,6 @@ app_main(void)
 	ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
 
 	xTaskCreate(icm_read_task, "icm read task", 1024 * 10, NULL, 15, NULL);
+	xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode",  2048, NULL, 6, NULL);
 	xTaskCreate(&tx_task, "tx_task", 1024*3, NULL, 1, NULL);
 }
