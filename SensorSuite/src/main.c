@@ -247,7 +247,7 @@ void task_bme280_normal_mode(void *ignore)
 	struct bme280_t bme280 = {
 		.bus_write = BME280_I2C_bus_write,
 		.bus_read = BME280_I2C_bus_read,
-		.dev_addr = BME280_I2C_ADDRESS2,
+		.dev_addr = BME280_I2C_ADDRESS1,
 		.delay_msec = BME280_delay_msek
 	};
 
@@ -293,19 +293,19 @@ void task_bme280_normal_mode(void *ignore)
 void
 app_main(void)
 {
-	if (!init()) {
-		ESP_LOGE(TAG, "RFM69 radio init failed");
-		while (1) { vTaskDelay(1); }
-	}
-	ESP_LOGI(TAG, "RFM69 radio init OK!");
+	// if (!init()) {
+	// 	ESP_LOGE(TAG, "RFM69 radio init failed");
+	// 	while (1) { vTaskDelay(1); }
+	// }
+	// ESP_LOGI(TAG, "RFM69 radio init OK!");
   
-	float freq = 915.0;
-	ESP_LOGW(TAG, "Set frequency to %.1fMHz", freq);
-	if (!setFrequency(freq)) {
-		ESP_LOGE(TAG, "setFrequency failed");
-		while (1) { vTaskDelay(1); }
-	}
-	ESP_LOGI(TAG, "RFM69 radio setFrequency OK!");
+	// float freq = 915.0;
+	// ESP_LOGW(TAG, "Set frequency to %.1fMHz", freq);
+	// if (!setFrequency(freq)) {
+	// 	ESP_LOGE(TAG, "setFrequency failed");
+	// 	while (1) { vTaskDelay(1); }
+	// }
+	// ESP_LOGI(TAG, "RFM69 radio setFrequency OK!");
 
 	ESP_LOGI(TAG, "Starting ICM test");
 	esp_err_t ret = i2c_bus_init();
@@ -313,5 +313,5 @@ app_main(void)
 
 	xTaskCreate(icm_read_task, "icm read task", 1024 * 10, NULL, 15, NULL);
 	xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode",  2048, NULL, 6, NULL);
-	xTaskCreate(&tx_task, "tx_task", 1024*3, NULL, 1, NULL);
+	//xTaskCreate(&tx_task, "tx_task", 1024*3, NULL, 1, NULL);
 }
