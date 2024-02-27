@@ -4,6 +4,7 @@
 
 #ifndef SENSORSUITE_ZOEM8Q_H
 #define SENSORSUITE_ZOEM8Q_H
+#include "esp_err.h"
 
 //put macros here
 

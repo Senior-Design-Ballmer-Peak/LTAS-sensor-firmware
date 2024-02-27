@@ -5,8 +5,7 @@
 #include "zoem8q.h"
 #include "driver/i2c.h"
 
-static esp_err_t
-i2c_bus_init(void)
+esp_err_t i2c_bus_init(void)
 {
     i2c_config_t conf;
     conf.mode = I2C_MODE_MASTER;
