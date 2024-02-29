@@ -180,7 +180,7 @@ static const ModemConfig MODEM_CONFIG_TABLE[] =
 
 };
 
-#define HOST_ID SPI1_HOST
+#define HOST_ID SPI3_HOST
 
 // SPI Stuff
 #if CONFIG_SPI2_HOST
@@ -200,35 +200,48 @@ static spi_device_handle_t _handle;
 #define millis() xTaskGetTickCount()*portTICK_PERIOD_MS
 
 void spi_init() {
-	gpio_reset_pin(CONFIG_NSS_GPIO);
-	gpio_set_direction(CONFIG_NSS_GPIO, GPIO_MODE_OUTPUT);
-	gpio_set_level(CONFIG_NSS_GPIO, 1);
+    gpio_reset_pin(CONFIG_NSS_GPIO);
+    gpio_set_direction(CONFIG_NSS_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(CONFIG_NSS_GPIO, 1);
 
-	spi_bus_config_t buscfg = {
-		.sclk_io_num = CONFIG_SCK_GPIO, // set SPI CLK pin
-		.mosi_io_num = CONFIG_MOSI_GPIO, // set SPI MOSI pin
-		.miso_io_num = CONFIG_MISO_GPIO, // set SPI MISO pin
-		.quadwp_io_num = -1,
-		.quadhd_io_num = -1
-	};
+    spi_bus_config_t buscfg = {
+        .mosi_io_num = CONFIG_MOSI_GPIO,
+        .miso_io_num = CONFIG_MISO_GPIO,
+        .sclk_io_num = CONFIG_SCK_GPIO,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 0,
+    };
 
-	esp_err_t ret;
-	ret = spi_bus_initialize( HOST_ID, &buscfg, SPI_DMA_CH_AUTO );
-	ESP_LOGI(TAG, "spi_bus_initialize=%d",ret);
-	assert(ret==ESP_OK);
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = 5000000,
+        .mode = 0,  // SPI mode 0
+        .spics_io_num = -1,
+        .queue_size = 1,
+    };
 
-	spi_device_interface_config_t devcfg = {
-		.clock_speed_hz = 5000000, // SPI clock is 5 MHz!
-		.queue_size = 7,
-		.mode = 0, // SPI mode 0
-		.spics_io_num = -1, // we will use manual CS control
-		.flags = SPI_DEVICE_NO_DUMMY
-	};
+    spi_device_handle_t spi_handle;
 
-	ret = spi_bus_add_device( HOST_ID, &devcfg, &_handle);
-	ESP_LOGI(TAG, "spi_bus_add_device=%d",ret);
-	assert(ret==ESP_OK);
+    esp_err_t ret;
+
+    // Initialize the SPI bus
+    ret = spi_bus_initialize(HOST_ID, &buscfg, SPI_DMA_CH_AUTO);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize SPI bus");
+        return;
+    }
+
+    // Add the SPI device to the SPI bus
+    ret = spi_bus_add_device(HOST_ID, &devcfg, &spi_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add SPI device to the bus");
+        return;
+    }
+
+    // Save the SPI handle for later use
+    _handle = spi_handle;
 }
+
 
 uint8_t spi_transfer(uint8_t address)
 {
