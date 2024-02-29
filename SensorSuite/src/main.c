@@ -12,7 +12,7 @@
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
-#define I2C_MASTER_FREQ_HZ 50000    /*!< I2C master clock frequency */
+#define I2C_MASTER_FREQ_HZ 33500    /*!< I2C master clock frequency */
 
 #define TAG_BME280 "BME280"
 
@@ -247,7 +247,7 @@ void task_bme280_normal_mode(void *ignore)
 	struct bme280_t bme280 = {
 		.bus_write = BME280_I2C_bus_write,
 		.bus_read = BME280_I2C_bus_read,
-		.dev_addr = BME280_I2C_ADDRESS1,
+		.dev_addr = BME280_I2C_ADDRESS2,
 		.delay_msec = BME280_delay_msek
 	};
 
