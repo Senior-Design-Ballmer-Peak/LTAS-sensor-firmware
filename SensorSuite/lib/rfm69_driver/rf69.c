@@ -180,7 +180,7 @@ static const ModemConfig MODEM_CONFIG_TABLE[] =
 
 };
 
-#define HOST_ID SPI3_HOST
+#define HOST_ID SPI1_HOST
 
 // SPI Stuff
 #if CONFIG_SPI2_HOST
@@ -200,6 +200,7 @@ static spi_device_handle_t _handle;
 #define millis() xTaskGetTickCount()*portTICK_PERIOD_MS
 
 void spi_init() {
+	ESP_LOGI(TAG, "Entered spi_init");
     gpio_reset_pin(CONFIG_NSS_GPIO);
     gpio_set_direction(CONFIG_NSS_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_level(CONFIG_NSS_GPIO, 1);
@@ -240,6 +241,7 @@ void spi_init() {
 
     // Save the SPI handle for later use
     _handle = spi_handle;
+	ESP_LOGI(TAG, "Exiting spi_init");
 }
 
 
@@ -308,6 +310,7 @@ void setIdleMode(uint8_t idleMode)
 
 bool init()
 {
+	ESP_LOGI(TAG, "Entered init");
 	// manual reset
 	gpio_reset_pin(CONFIG_RST_GPIO);
 	gpio_set_direction(CONFIG_RST_GPIO, GPIO_MODE_OUTPUT);
@@ -371,7 +374,7 @@ bool init()
 	setEncryptionKey(NULL);
 	// +13dBm, same as power-on default
 	setTxPower(13, RH_RF69_DEFAULT_HIGHPOWER);
-
+	ESP_LOGI(TAG, "Exiting init");
 	return true;
 }
 

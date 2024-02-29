@@ -51,6 +51,8 @@ esp_err_t i2c_bus_init(void)
     return i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0);
 }
 
+
+
 s8 BME280_I2C_bus_write(u8 dev_addr, u8 reg_addr, u8 *reg_data, u8 cnt)
 {
 	s32 iError = BME280_INIT_VALUE;
@@ -308,36 +310,32 @@ void tx_task(void *pvParameter)
 	vTaskDelete( NULL );
 }
 
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "App main started");
 
     // Initialize I2C bus
-    esp_err_t i2c = i2c_bus_init();
-    if (i2c != ESP_OK) {
-        ESP_LOGE(TAG, "I2C bus initialization failed: %s", esp_err_to_name(i2c));
-        return;
-    }
-    ESP_LOGI(TAG, "I2C bus initialization successful");
+    ESP_LOGI(TAG, "Starting ICM test");
+	esp_err_t ret = i2c_bus_init();
+	ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
 
     // Initialize RFM69 radio
-    if (!init()) {
-        ESP_LOGE(TAG, "RFM69 radio initialization failed");
-        return;
-    }
-    ESP_LOGI(TAG, "RFM69 radio initialization successful");
+	// ESP_LOGI(TAG, "Starting RFM test");
+	// esp_err_t rfm = init();
+	// ESP_LOGI(TAG, "RFM bus initialization: %s", esp_err_to_name(rfm));
 
-    // Set RFM69 radio frequency
-    float freq = 915.0;
-    ESP_LOGI(TAG, "Setting frequency to %.1fMHz", freq);
-    if (!setFrequency(freq)) {
-        ESP_LOGE(TAG, "Failed to set frequency");
-        return;
-    }
-    ESP_LOGI(TAG, "Frequency set successfully");
+    // // Set RFM69 radio frequency
+    // float freq = 915.0;
+    // ESP_LOGI(TAG, "Setting frequency to %.1fMHz", freq);
+    // if (!setFrequency(freq)) {
+    //     ESP_LOGE(TAG, "Failed to set frequency");
+    //     return;
+    // }
+    // ESP_LOGI(TAG, "Frequency set successfully");
 
     // Create tasks with optimized priorities
-    xTaskCreate(&tx_task, "tx_task", 2048, NULL, 5, NULL);
+    //xTaskCreate(&tx_task, "tx_task", 2048, NULL, 3, NULL);
     //xTaskCreate(icm_read_task, "icm_read_task", 2048, NULL, 4, NULL);
-    //xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode", 2048, NULL, 3, NULL);
+    xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode", 2048, NULL, 5, NULL);
 }
