@@ -3,19 +3,28 @@
 
 #include "esp_log.h"
 #include "driver/i2c.h"
+#include "driver/spi_master.h"
 #include "bme280.h"
 #include "icm20948.h"
+#include "rf69.h"
 
 
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
 #define I2C_MASTER_FREQ_HZ 33500    /*!< I2C master clock frequency */
+#define I2C_MASTER_ACK 0 /**/
+#define I2C_MASTER_NACK 1 /**/
 
-#define TAG_BME280 "BME280"
+#define PIN_NUM_MOSI 23 /**/
+#define PIN_NUM_MISO 19 /**/
+#define PIN_NUM_CLK 18 /**/
+#define SPI_DMA_CHAN_NONE 0 /**/
 
-#define I2C_MASTER_ACK 0
-#define I2C_MASTER_NACK 1
+
+#define TAG_BME280 "BME280" /**/
+#define TAG_ICM20948 "ICM20948" /**/
+#define TAG_RF69 "RF69" /**/
 
 static const char *TAG = "test";
 
@@ -250,17 +259,85 @@ icm_read_task(void *args)
 
 
 
+esp_err_t init_spi_bus(void) {
+    spi_bus_config_t buscfg = {
+        .mosi_io_num = PIN_NUM_MOSI, // Specify your pin numbers here
+        .miso_io_num = PIN_NUM_MISO,
+        .sclk_io_num = PIN_NUM_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4096,
+    };
 
-void
-app_main(void)
+    // Initialize the SPI bus
+    return spi_bus_initialize(HSPI_HOST, &buscfg, SPI_DMA_CHAN_NONE);
+}
+
+void tx_task(void *pvParameter)
 {
-	ESP_LOGI(TAG, "App main started");
+	ESP_LOGI(pcTaskGetName(0), "Start");
+	int packetnum = 0;	// packet counter, we increment per xmission
+	while(1) {
 
-    ESP_LOGI(TAG, "Starting ICM test");
-	esp_err_t ret = i2c_bus_init();
-	ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
+		char radiopacket[64] = "Hello World #";
+		sprintf(radiopacket, "Hello World #%d", packetnum++);
+		ESP_LOGI(pcTaskGetName(0), "Sending %s", radiopacket);
+  
+		// Send a message!
+		send((uint8_t *)radiopacket, strlen(radiopacket));
+		waitPacketSent();
 
-    
-	xTaskCreate(icm_read_task, "icm read task", 2048, NULL, 5, NULL);
-	xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode",  2048, NULL, 6, NULL);
+		// Now wait for a reply
+		uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+		uint8_t len = sizeof(buf);
+
+		if (waitAvailableTimeout(500))	{
+			// Should be a reply message for us now   
+			if (recv(buf, &len)) {
+				ESP_LOGI(pcTaskGetName(0), "Got a reply: %s", (char*)buf);
+			} else {
+				ESP_LOGE(pcTaskGetName(0), "Receive failed");
+			}
+		} else {
+			ESP_LOGE(pcTaskGetName(0), "No reply, is another RFM69 listening?");
+		}
+		vTaskDelay(1000/portTICK_PERIOD_MS);
+	} // end while
+
+	// never reach here
+	vTaskDelete( NULL );
+}
+
+void app_main(void)
+{
+    ESP_LOGI(TAG, "App main started");
+
+    // Initialize I2C bus
+    esp_err_t i2c = i2c_bus_init();
+    if (i2c != ESP_OK) {
+        ESP_LOGE(TAG, "I2C bus initialization failed: %s", esp_err_to_name(i2c));
+        return;
+    }
+    ESP_LOGI(TAG, "I2C bus initialization successful");
+
+    // Initialize RFM69 radio
+    if (!init()) {
+        ESP_LOGE(TAG, "RFM69 radio initialization failed");
+        return;
+    }
+    ESP_LOGI(TAG, "RFM69 radio initialization successful");
+
+    // Set RFM69 radio frequency
+    float freq = 915.0;
+    ESP_LOGI(TAG, "Setting frequency to %.1fMHz", freq);
+    if (!setFrequency(freq)) {
+        ESP_LOGE(TAG, "Failed to set frequency");
+        return;
+    }
+    ESP_LOGI(TAG, "Frequency set successfully");
+
+    // Create tasks with optimized priorities
+    xTaskCreate(&tx_task, "tx_task", 2048, NULL, 5, NULL);
+    //xTaskCreate(icm_read_task, "icm_read_task", 2048, NULL, 4, NULL);
+    //xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode", 2048, NULL, 3, NULL);
 }
