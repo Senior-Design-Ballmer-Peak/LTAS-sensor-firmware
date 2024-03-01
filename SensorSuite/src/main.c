@@ -7,6 +7,7 @@
 #include "bme280.h"
 #include "icm20948.h"
 #include "rf69.h"
+#include "esp_task_wdt.h"
 
 
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
@@ -25,6 +26,9 @@
 #define TAG_BME280 "BME280" /**/
 #define TAG_ICM20948 "ICM20948" /**/
 #define TAG_RF69 "RF69" /**/
+
+#define TX_TASK_CORE_ID 0
+#define SENSOR_TASK_CORE_ID 0
 
 static const char *TAG = "test";
 
@@ -277,17 +281,20 @@ esp_err_t init_spi_bus(void) {
 
 void tx_task(void *pvParameter)
 {
-	ESP_LOGI(pcTaskGetName(0), "Start");
-	int packetnum = 0;	// packet counter, we increment per xmission
-	while(1) {
+    ESP_LOGI(pcTaskGetName(0), "Start");
+    int packetnum = 0;  // packet counter
 
-		char radiopacket[64] = "Hello World #";
-		sprintf(radiopacket, "Hello World #%d", packetnum++);
-		ESP_LOGI(pcTaskGetName(0), "Sending %s", radiopacket);
-  
-		// Send a message!
-		send((uint8_t *)radiopacket, strlen(radiopacket));
-		waitPacketSent();
+    while(1) {
+        // Limit packet number to avoid buffer overflow
+        int num_to_print = packetnum % 100;  // Only print last 2 digits
+
+        char radiopacket[64];
+        snprintf(radiopacket, sizeof(radiopacket), "Hello World #%d", num_to_print);
+        ESP_LOGI(pcTaskGetName(0), "Sending %s", radiopacket);
+
+        // Send the message
+        send((uint8_t *)radiopacket, strlen(radiopacket));
+        waitPacketSent();
 
 		// Now wait for a reply
 		uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
@@ -304,26 +311,31 @@ void tx_task(void *pvParameter)
 			ESP_LOGE(pcTaskGetName(0), "No reply, is another RFM69 listening?");
 		}
 		vTaskDelay(1000/portTICK_PERIOD_MS);
-	} // end while
+        packetnum++;
 
-	// never reach here
-	vTaskDelete( NULL );
+		// Feed the watchdog
+        esp_task_wdt_reset();
+
+		// Or yield to other tasks
+        vTaskDelay(pdMS_TO_TICKS(100)); // Delay for 100 ms
+    }
+
+    vTaskDelete( NULL );
 }
 
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "App main started");
-
-    // Initialize I2C bus
-    ESP_LOGI(TAG, "Starting ICM test");
-	esp_err_t ret = i2c_bus_init();
-	ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
+    ESP_LOGI(TAG, "App main started");		
+    // // Initialize I2C bus
+    // ESP_LOGI(TAG, "Starting ICM test");
+	// esp_err_t ret = i2c_bus_init();
+	// ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
 
     // Initialize RFM69 radio
-	// ESP_LOGI(TAG, "Starting RFM test");
-	// esp_err_t rfm = init();
-	// ESP_LOGI(TAG, "RFM bus initialization: %s", esp_err_to_name(rfm));
+	ESP_LOGI(TAG, "Starting RFM test");
+	esp_err_t rfm = init();
+	ESP_LOGI(TAG, "RFM bus initialization: %s", esp_err_to_name(rfm));
 
     // // Set RFM69 radio frequency
     // float freq = 915.0;
@@ -335,7 +347,7 @@ void app_main(void)
     // ESP_LOGI(TAG, "Frequency set successfully");
 
     // Create tasks with optimized priorities
-    //xTaskCreate(&tx_task, "tx_task", 2048, NULL, 3, NULL);
-    //xTaskCreate(icm_read_task, "icm_read_task", 2048, NULL, 4, NULL);
-    xTaskCreate(&task_bme280_normal_mode, "bme280_normal_mode", 2048, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(&tx_task, "tx_task", 2048, NULL, 3, NULL, TX_TASK_CORE_ID);
+    //xTaskCreatePinnedToCore(icm_read_task, "icm_read_task", 2048, NULL, 4, NULL, SENSOR_TASK_CORE_ID);
+    //xTaskCreatePinnedToCore(&task_bme280_normal_mode, "bme280_normal_mode", 2048, NULL, 5, NULL, SENSOR_TASK_CORE_ID);
 }

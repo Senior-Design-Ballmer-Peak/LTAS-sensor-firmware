@@ -180,7 +180,7 @@ static const ModemConfig MODEM_CONFIG_TABLE[] =
 
 };
 
-#define HOST_ID SPI1_HOST
+#define HOST_ID VSPI_HOST
 
 // SPI Stuff
 #if CONFIG_SPI2_HOST
@@ -188,6 +188,7 @@ static const ModemConfig MODEM_CONFIG_TABLE[] =
 #elif CONFIG_SPI3_HOST
 #define HOST_ID SPI3_HOST
 #endif
+
 static spi_device_handle_t _handle;
 
 
@@ -201,6 +202,8 @@ static spi_device_handle_t _handle;
 
 void spi_init() {
 	ESP_LOGI(TAG, "Entered spi_init");
+    
+	// NSS/CS pin configuration
     gpio_reset_pin(CONFIG_NSS_GPIO);
     gpio_set_direction(CONFIG_NSS_GPIO, GPIO_MODE_OUTPUT);
     gpio_set_level(CONFIG_NSS_GPIO, 1);
@@ -215,13 +218,11 @@ void spi_init() {
     };
 
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 5000000,
+        .clock_speed_hz = 5000000, // Adjust as necessary
         .mode = 0,  // SPI mode 0
-        .spics_io_num = -1,
+        .spics_io_num = -1, // Manual CS control
         .queue_size = 1,
     };
-
-    spi_device_handle_t spi_handle;
 
     esp_err_t ret;
 
@@ -233,15 +234,13 @@ void spi_init() {
     }
 
     // Add the SPI device to the SPI bus
-    ret = spi_bus_add_device(HOST_ID, &devcfg, &spi_handle);
+    ret = spi_bus_add_device(HOST_ID, &devcfg, &_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add SPI device to the bus");
         return;
     }
 
-    // Save the SPI handle for later use
-    _handle = spi_handle;
-	ESP_LOGI(TAG, "Exiting spi_init");
+    ESP_LOGI(TAG, "Exiting spi_init");
 }
 
 
@@ -310,7 +309,7 @@ void setIdleMode(uint8_t idleMode)
 
 bool init()
 {
-	ESP_LOGI(TAG, "Entered init");
+	printf("1");
 	// manual reset
 	gpio_reset_pin(CONFIG_RST_GPIO);
 	gpio_set_direction(CONFIG_RST_GPIO, GPIO_MODE_OUTPUT);
@@ -319,9 +318,15 @@ bool init()
 	gpio_set_level(CONFIG_RST_GPIO, LOW);
 	delay(100);
 
+	printf("2");
+
 	_idleMode = RH_RF69_OPMODE_MODE_STDBY;
 
+	printf("3");
+
 	spi_init();
+
+	printf("4");
 
 	// Get the device type and check it
 	// This also tests whether we are really connected to a device

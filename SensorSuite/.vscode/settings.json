@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "spi_master.h": "c"
+        "spi_master.h": "c",
+        "stdbool.h": "c"
     }
 }
