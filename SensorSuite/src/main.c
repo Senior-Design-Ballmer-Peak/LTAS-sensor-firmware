@@ -30,7 +30,7 @@
 #define TX_TASK_CORE_ID 0
 #define SENSOR_TASK_CORE_ID 0
 
-static const char *TAG = "test";
+static const char* TAG = "test";
 
 static const char *TAG1 = "gyro test";
 static const char *TAG2 = "accel test";
@@ -281,7 +281,9 @@ esp_err_t init_spi_bus(void) {
 
 void tx_task(void *pvParameter)
 {
-    ESP_LOGI(pcTaskGetName(0), "Start");
+	ESP_LOGI(TAG, "tx_task started");	
+    
+	ESP_LOGI(pcTaskGetName(0), "Start");
     int packetnum = 0;  // packet counter
 
     while(1) {
@@ -326,11 +328,15 @@ void tx_task(void *pvParameter)
 
 void app_main(void)
 {
+	esp_log_level_set("*", ESP_LOG_INFO);
+
     ESP_LOGI(TAG, "App main started");		
     // // Initialize I2C bus
     // ESP_LOGI(TAG, "Starting ICM test");
 	// esp_err_t ret = i2c_bus_init();
 	// ESP_LOGI(TAG, "I2C bus initialization: %s", esp_err_to_name(ret));
+
+	ESP_LOGI(TAG, "ABOUT TO START RADIO SPI INIT");
 
     // Initialize RFM69 radio
 	ESP_LOGI(TAG, "Starting RFM test");
