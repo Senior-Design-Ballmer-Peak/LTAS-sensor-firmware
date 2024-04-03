@@ -4,9 +4,9 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "driver/spi_master.h"
-#include "bme280.h"
-#include "icm20948.h"
-#include "rf69.h"
+#include "bme280.h"				/*Sensor Driver for BME280 sensor*/
+#include "icm20948.h"			/*Accelerometer and Gyroscope Driver for Sensor*/
+#include "rf69.h"				/*Module Driver for RF Module*/
 
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
