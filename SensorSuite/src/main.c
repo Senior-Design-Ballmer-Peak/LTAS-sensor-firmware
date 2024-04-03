@@ -246,8 +246,6 @@ icm_read_task(void *args)
 	vTaskDelete(NULL);
 }
 
-
-
 esp_err_t init_spi_bus(void) {
     spi_bus_config_t buscfg = {
         .mosi_io_num = PIN_NUM_MOSI, // Specify your pin numbers here
