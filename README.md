@@ -18,3 +18,4 @@ For support, questions, or more information, please open an issue in the GitHub 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file in the root directory for details.
+
