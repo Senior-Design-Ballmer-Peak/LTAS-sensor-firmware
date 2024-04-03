@@ -10,6 +10,7 @@ The LTAS-Rocket-Sensor-Firmware repository is dedicated to providing robust C dr
 - **Pressure Sensors**: Measure atmospheric pressure for altitude determination and environmental analysis.
 - **Accelerometers and Gyroscopes**: Track the rocket's acceleration and orientation, crucial for flight dynamics analysis.
 - **Radio Communication Modules**: Enable reliable data transmission to the ground station, ensuring you receive live telemetry and flight data.
+- **GPS Position**: Track the rockets position on the globe to enable easy retrieval .
 
 ## Support
 
