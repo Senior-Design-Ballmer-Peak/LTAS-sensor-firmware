@@ -8,7 +8,6 @@
 #include "icm20948.h"
 #include "rf69.h"
 
-
 #define I2C_MASTER_SCL_IO  22        /*!< gpio number for I2C master clock */
 #define I2C_MASTER_SDA_IO  21        /*!< gpio number for I2C master data  */
 #define I2C_MASTER_NUM     I2C_NUM_0 /*!< I2C port number for master dev */
@@ -21,7 +20,6 @@
 #define PIN_NUM_CLK 18 /**/
 #define SPI_DMA_CHAN_NONE 0 /**/
 
-
 #define TAG_BME280 "BME280" /**/
 #define TAG_ICM20948 "ICM20948" /**/
 #define TAG_RF69 "RF69" /**/
@@ -31,7 +29,6 @@ static const char *TAG = "test";
 static const char *TAG1 = "gyro test";
 static const char *TAG2 = "accel test";
 static icm20948_handle_t icm20948 = NULL;
-
 
 esp_err_t i2c_bus_init(void)
 {
@@ -160,8 +157,6 @@ void task_bme280_normal_mode(void *ignore)
 	vTaskDelete(NULL);
 }
 
-
-
 static esp_err_t
 icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 {
@@ -184,7 +179,6 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 		return ret;
 	}
 		
-
 	vTaskDelay(10 / portTICK_PERIOD_MS);
 
 	ret = icm20948_wake_up(icm20948);
@@ -193,14 +187,12 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 		return ret;
 	}
 		
-
 	ret = icm20948_set_bank(icm20948, 0);
 	if (ret != ESP_OK){
 		ESP_LOGE(TAG, "set bank failed");
 		return ret;
 	}
 		
-
 	uint8_t device_id;
 	ret = icm20948_get_deviceid(icm20948, &device_id);
 	if (ret != ESP_OK){
@@ -214,21 +206,18 @@ icm20948_configure(icm20948_acce_fs_t acce_fs, icm20948_gyro_fs_t gyro_fs)
 		return ESP_FAIL;
 	}
 		
-
 	ret = icm20948_set_gyro_fs(icm20948, gyro_fs);
 	if (ret != ESP_OK){
 		ESP_LOGE(TAG, "set gyro failed");
 		return ESP_FAIL;
 	}
 		
-
 	ret = icm20948_set_acce_fs(icm20948, acce_fs);
 	if (ret != ESP_OK){
 		ESP_LOGE(TAG, "set accel failed");
 		return ESP_FAIL;
 	}
 		
-
 	return ret;
 }
 
