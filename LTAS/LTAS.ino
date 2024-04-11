@@ -30,6 +30,7 @@ int16_t packetnum = 0;
 /* Function Prototype */
 String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float magX, float magY, float magZ, float tempC, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude);
 float convertDegMinToDecDeg(float degMin);
+float convertMilliGsToMpS(float milliGs);
 
 float accX = 0.0;
 float accY = 0.0;
@@ -119,9 +120,9 @@ void loop(){
     myIMU.getAGMT();
 
     /* Accelerometer Data */
-    accX = myIMU.accX()/100;
-    accY = myIMU.accY()/100;
-    accZ = myIMU.accZ()/100;
+    accX = myIMU.accX();
+    accY = myIMU.accY();
+    accZ = myIMU.accZ();
 
     /* Gyroscopic Data */
     gyrX = myIMU.gyrX();
