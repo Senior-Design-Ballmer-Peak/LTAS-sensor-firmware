@@ -120,9 +120,9 @@ void loop(){
     myIMU.getAGMT();
 
     /* Accelerometer Data */
-    accX = myIMU.accX();
-    accY = myIMU.accY();
-    accZ = myIMU.accZ();
+    accX = convertMilliGsToMpS(myIMU.accX());
+    accY = convertMilliGsToMpS(myIMU.accY());
+    accZ = convertMilliGsToMpS(myIMU.accZ());
 
     /* Gyroscopic Data */
     gyrX = myIMU.gyrX();
@@ -227,4 +227,9 @@ float convertDegMinToDecDeg(float degMin) {
   int degrees = (int)(degMin / 100);
   float minutes = degMin - (degrees * 100);
   return degrees + (minutes / 60.0);
+}
+
+float convertMilliGsToMpS(float milliGs){
+  float metersPerSecond = milliGs * 9.80665 / 1000000;
+  return metersPerSecond;
 }
