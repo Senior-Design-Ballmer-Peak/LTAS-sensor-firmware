@@ -119,9 +119,9 @@ void loop(){
     myIMU.getAGMT();
 
     /* Accelerometer Data */
-    accX = myIMU.accX();
-    accY = myIMU.accY();
-    accZ = myIMU.accZ();
+    accX = myIMU.accX()/100;
+    accY = myIMU.accY()/100;
+    accZ = myIMU.accZ()/100;
 
     /* Gyroscopic Data */
     gyrX = myIMU.gyrX();
