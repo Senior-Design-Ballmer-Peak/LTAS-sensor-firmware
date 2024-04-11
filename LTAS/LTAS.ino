@@ -113,6 +113,7 @@ void setup() {
 void loop(){
   delay(2000);
 
+
   if (myIMU.dataReady()){
     /* Get accelerometer, gyroscope, and magnetometer */
     myIMU.getAGMT();
@@ -153,7 +154,7 @@ void loop(){
   }
 
   String packet = createRadioPacket(accX, accY, accZ, gyrX, gyrY, gyrZ, magX, magY, magZ, tempC, tempF, humidity, pressure, latitude, longitude, altitude);
-  
+
   unsigned int packetSize = RH_RF69_MAX_MESSAGE_LEN - 10; // Ensure this is an unsigned int
   unsigned int totalPackets = packet.length() / packetSize + ((packet.length() % packetSize) != 0 ? 1 : 0); // Use unsigned int here as well
 
@@ -175,7 +176,7 @@ void loop(){
     delay(100); // Short delay to prevent overwhelming the receiver
   }
 
-  delay(3000);
+  delay(500);
 }
 
 String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float magX, float magY, float magZ, float tempC, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude) {
@@ -217,6 +218,7 @@ String createRadioPacket(float accX, float accY, float accZ, float gyrX, float g
     packet += "Altitude: N/A";
   }
 
+  Serial.println(packet);
   return packet;
 }
 
