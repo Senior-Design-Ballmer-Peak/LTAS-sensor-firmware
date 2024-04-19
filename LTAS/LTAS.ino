@@ -112,7 +112,7 @@ void setup() {
 }
 
 void loop(){
-  delay(50);
+  //delay(100);
 
 
   if (myIMU.dataReady()){
@@ -177,7 +177,7 @@ void loop(){
     delay(100); // Short delay to prevent overwhelming the receiver
   }
 
-  delay(50);
+  //delay(100);
 }
 
 String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float magX, float magY, float magZ, float tempC, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude) {
@@ -218,7 +218,6 @@ String createRadioPacket(float accX, float accY, float accZ, float gyrX, float g
     packet += "Longitude: N/A, ";
     packet += "Altitude: N/A";
   }
-
   Serial.println(packet);
   return packet;
 }
