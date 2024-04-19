@@ -112,7 +112,7 @@ void setup() {
 }
 
 void loop(){
-  delay(2000);
+  delay(50);
 
 
   if (myIMU.dataReady()){
@@ -177,7 +177,7 @@ void loop(){
     delay(100); // Short delay to prevent overwhelming the receiver
   }
 
-  delay(500);
+  delay(50);
 }
 
 String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float magX, float magY, float magZ, float tempC, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude) {
