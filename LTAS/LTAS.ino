@@ -1,234 +1,149 @@
-// L-TAS Firmware
-// Author: Charles Wilmot & Tristan Pawlenty
-
-/* Include Statements */
 #include <Wire.h>
 #include <Arduino.h>
-#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
-#include "ICM_20948.h"
-#include <SparkFunBME280.h>
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h> // For GNSS functionality
+#include "ICM_20948.h" // For IMU functionality
+#include <SparkFunBME280.h> // For environmental sensor functionality
 #include <SPI.h>
-#include <RH_RF69.h>
+#include <RH_RF69.h> // For RF communication
 
-/* Class instances */
-SFE_UBLOX_GNSS myGNSS;
-ICM_20948_I2C myIMU;
-BME280 myBME;
+// Sensor and module instances
+SFE_UBLOX_GNSS myGNSS; // GNSS module
+ICM_20948_I2C myIMU; // IMU sensor
+BME280 myBME; // Environmental sensor
 
-/* Radio Definitions */
+// RF69 module configuration
 #define RF69_FREQ 915.0
-#define RFM69_CS    5
-#define RFM69_INT   15
-#define RFM69_RST   16
+#define RFM69_CS 5
+#define RFM69_INT 15
+#define RFM69_RST 16
 
-/* Singleton instance of the radio driver */
-RH_RF69 rf69(RFM69_CS, RFM69_INT);
+RH_RF69 rf69(RFM69_CS, RFM69_INT); // RF69 instance
 
-/* packet counter incremented per xmission */
-int16_t packetnum = 0;
+int16_t packetnum = 0; // Packet number counter for RF transmission
 
-/* Function Prototype */
-String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float magX, float magY, float magZ, float tempC, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude);
-float convertDegMinToDecDeg(float degMin);
-float convertMilliGsToMpS(float milliGs);
-
-float accX = 0.0;
-float accY = 0.0;
-float accZ = 0.0;
-float gyrX = 0.0;
-float gyrY = 0.0;
-float gyrZ = 0.0;
-float magX = 0.0;
-float magY = 0.0;
-float magZ = 0.0;
-float tempC = 0.0;
-float tempF = 0.0;
-float humidity = 0.0;
-float pressure = 0.0;
-float latitude = 0.0;
-float longitude = 0.0;
-float altitude = 0.0;
+// Function to calculate altitude from pressure readings
+float calculatePressureBasedAltitude(float pressure, float seaLevelPressure = 1005) {
+    return 44330.0 * (1.0 - pow(pressure / seaLevelPressure, 0.1903));
+}
 
 void setup() {
-  /* Serial Setup */
-  Serial.begin(115200);
+  Serial.begin(115200); // Start serial communication at 115200 baud rate
+  Wire.begin(); // Initialize I2C communication
 
-  /* Wire Setup */
-  Wire.begin();
-
-  /* GPS Setup */
-  if (myGNSS.begin() == false) {
-    Serial.println(F("u-blox GNSS module not detected at default I2C address. Please check wiring. Freezing."));
-    while (1);
+  // Check and initialize GNSS module
+  if (!myGNSS.begin()) {
+    Serial.println("u-blox GNSS module not detected at default I2C address. Please check wiring. Freezing.");
+    while (1); // Freeze if module not detected
   }
 
-  delay(2000);
-  myGNSS.setI2COutput(COM_TYPE_UBX | COM_TYPE_NMEA); // Set the I2C port to output both NMEA and UBX messages
-  myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT); // Save (only) the communications port settings to flash and BBR
-  
-  delay(2000);
-  //myGNSS.setNMEAOutputPort(Serial); // Configure the GNSS module to output NMEA sentences to the serial port
+  // Configure GNSS output type and save configuration
+  myGNSS.setI2COutput(COM_TYPE_UBX | COM_TYPE_NMEA);
+  myGNSS.saveConfigSelective(VAL_CFG_SUBSEC_IOPORT);
 
-  /* IMU Setup */
+  // Check and initialize IMU sensor
   if (myIMU.begin() != ICM_20948_Stat_Ok) {
     Serial.println("ICM-20948 IMU not detected. Please check wiring. Freezing.");
-    while (1);
+    while (1); // Freeze if sensor not detected
   }
 
-  /* BME Setup */
+  // Check and initialize environmental sensor
   if (!myBME.begin()) {
     Serial.println("BME280 sensor not detected. Please check wiring. Freezing.");
-    while (1);
+    while (1); // Freeze if sensor not detected
   }
 
-  /* Radio Setup*/
+  // Reset RF69 module
   pinMode(RFM69_RST, OUTPUT);
   digitalWrite(RFM69_RST, LOW);
-
-  /* Manual Reset */
   digitalWrite(RFM69_RST, HIGH);
   delay(10);
   digitalWrite(RFM69_RST, LOW);
   delay(10);
 
-  /* RFM69 Setup */
+  // Initialize RF69 radio
   if (!rf69.init()) {
     Serial.println("RFM69 radio init failed");
-    while (1);
+    while (1); // Freeze if radio fails to initialize
   }
 
-  /* Set Frequency */
+  // Set RF69 frequency
   if (!rf69.setFrequency(RF69_FREQ)) {
     Serial.println("setFrequency failed");
   }
 
-  /* High power mode, true for 69hcw */
+  // Set RF69 transmission power
   rf69.setTxPower(20, true);
 
-  // The encryption key has to be the same as the one in the server
-  uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-                    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+  // Set encryption key for RF69
+  uint8_t key[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+                   0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
   rf69.setEncryptionKey(key);
 }
 
-void loop(){
-  //delay(100);
+void loop() {
+  if (myIMU.dataReady()) {
+    myIMU.getAGMT(); // Get all new data from IMU
+    // Convert acceleration from milli-g to m/s^2
+    float accX = myIMU.accX() * 9.80665 / 1000;
+    float accY = myIMU.accY() * 9.80665 / 1000;
+    float accZ = myIMU.accZ() * 9.80665 / 1000;
+    // Read gyroscope data
+    float gyrX = myIMU.gyrX();
+    float gyrY = myIMU.gyrY();
+    float gyrZ = myIMU.gyrZ();
+    // Read environmental data
+    float tempF = myBME.readTempF();
+    float humidity = myBME.readFloatHumidity();
+    float pressure = myBME.readFloatPressure() / 100.0; // Convert Pa to hPa
+    float altitudeFromPressure = calculatePressureBasedAltitude(pressure);
+    // Initialize GNSS data variables
+    float latitude = 0.0, longitude = 0.0, altitude = 0.0;
 
+    if (myGNSS.getGnssFixOk()) {
+      latitude = myGNSS.getLatitude() / 10000000.0;
+      longitude = myGNSS.getLongitude() / 10000000.0;
+      altitude = myGNSS.getAltitude() / 1000.0; // Convert mm to m
+    }
 
-  if (myIMU.dataReady()){
-    /* Get accelerometer, gyroscope, and magnetometer */
-    myIMU.getAGMT();
+    // Calculate average altitude from GNSS and pressure sensor
+    float newAltitude = (altitude + altitudeFromPressure) / 2;
 
-    /* Accelerometer Data */
-    accX = convertMilliGsToMpS(myIMU.accX());
-    accY = convertMilliGsToMpS(myIMU.accY());
-    accZ = convertMilliGsToMpS(myIMU.accZ());
-
-    /* Gyroscopic Data */
-    gyrX = myIMU.gyrX();
-    gyrY = myIMU.gyrY();
-    gyrZ = myIMU.gyrZ();
-
-    /* Magnetometer Data */
-    magX = myIMU.magX();
-    magY = myIMU.magY();
-    magZ = myIMU.magZ();
+    // Create and send radio packet with all sensor data
+    String packet = createRadioPacket(accX, accY, accZ, gyrX, gyrY, gyrZ, tempF, humidity, pressure, latitude, longitude, newAltitude);
+    sendRadioPacket(packet);
   }
+}
 
-  /* Temperature Data */
-  tempC = myBME.readTempC();
-  tempF = myBME.readTempF();
+// Function to create a formatted string with sensor data
+String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude) {
+  char buffer[400];
+  snprintf(buffer, 400,
+           "AccX: %0.2f, AccY: %0.2f, AccZ: %0.2f, "
+           "GyrX: %0.2f, GyrY: %0.2f, GyrZ: %0.2f, "
+           "TempF: %0.2f, Humidity: %0.2f, "
+           "Pressure: %0.2f, Latitude: %0.2f, Longitude: %0.2f, Altitude: %0.2f",
+           accX, accY, accZ, gyrX, gyrY, gyrZ, tempF, humidity, pressure, latitude, longitude, altitude);
+  return String(buffer);
+}
 
-  /* Humidity Data */
-  humidity = myBME.readFloatHumidity();
-
-  /* Pressure Data */
-  pressure = myBME.readFloatPressure();
-
-  /* GPS Data */
-  if (myGNSS.getGnssFixOk()) {
-    latitude = float(myGNSS.getLatitude()) / 10000000.0;
-    longitude = float(myGNSS.getLongitude()) / 10000000.0;
-    altitude = float(myGNSS.getAltitude())  / 1000.0;
-  } else {
-    Serial.println("Waiting for GNSS fix...");
-  }
-
-  String packet = createRadioPacket(accX, accY, accZ, gyrX, gyrY, gyrZ, magX, magY, magZ, tempC, tempF, humidity, pressure, latitude, longitude, altitude);
-
-  unsigned int packetSize = RH_RF69_MAX_MESSAGE_LEN - 10; // Ensure this is an unsigned int
-  unsigned int totalPackets = packet.length() / packetSize + ((packet.length() % packetSize) != 0 ? 1 : 0); // Use unsigned int here as well
+// Function to send the data packet via RF69
+void sendRadioPacket(String packet) {
+  unsigned int packetSize = RH_RF69_MAX_MESSAGE_LEN - 10;
+  unsigned int totalPackets = packet.length() / packetSize + ((packet.length() % packetSize) != 0 ? 1 : 0);
 
   for (unsigned int i = 0; i < totalPackets; i++) {
     unsigned int start = i * packetSize;
-    unsigned int end = min((i + 1) * packetSize, packet.length()); // Now both arguments are unsigned int
+    unsigned int end = min((i + 1) * packetSize, packet.length());
     
     String chunk = packet.substring(start, end);
     String header = "P" + String(i) + "of" + String(totalPackets) + ":";
     String message = header + chunk;
     
-    // Convert the packet to a char array
     char radiopacket[message.length() + 1];
     message.toCharArray(radiopacket, sizeof(radiopacket));
     
-    // Send the packet
-    rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
-    rf69.waitPacketSent();
-    delay(100); // Short delay to prevent overwhelming the receiver
+    rf69.send((uint8_t *)radiopacket, strlen(radiopacket)); // Send the packet
+    rf69.waitPacketSent(); // Wait for the packet to be sent
+    delay(10); // Short delay between packets
   }
-
-  //delay(100);
-}
-
-String createRadioPacket(float accX, float accY, float accZ, float gyrX, float gyrY, float gyrZ, float magX, float magY, float magZ, float tempC, float tempF, float humidity, float pressure, float latitude, float longitude, float altitude) {
-  String packet = "";
-
-  // Accelerometer data (in m/s^2)
-  packet += "AccX: " + String(accX) + " m/s^2, ";
-  packet += "AccY: " + String(accY) + " m/s^2, ";
-  packet += "AccZ: " + String(accZ) + " m/s^2, ";
-
-  // Gyroscope data (in deg/s)
-  packet += "GyrX: " + String(gyrX) + " deg/s, ";
-  packet += "GyrY: " + String(gyrY) + " deg/s, ";
-  packet += "GyrZ: " + String(gyrZ) + " deg/s, ";
-
-  // Magnetometer data (in uT)
-  packet += "MagX: " + String(magX) + " uT, ";
-  packet += "MagY: " + String(magY) + " uT, ";
-  packet += "MagZ: " + String(magZ) + " uT, ";
-
-  // Temperature data (in °C and °F)
-  packet += "TempC: " + String(tempC) + " °C, ";
-  packet += "TempF: " + String(tempF) + " °F, ";
-
-  // Humidity (in %)
-  packet += "Humidity: " + String(humidity) + " %, ";
-
-  // Pressure (in hPa)
-  packet += "Pressure: " + String(pressure / 100.0, 2) + " hPa, ";
-
-  // GPS data (in degrees and meters)
-  if (latitude != 0.0 && longitude != 0.0) {
-    packet += "Latitude: " + String(latitude, 8) + " degrees, ";
-    packet += "Longitude: " + String(longitude, 8) + " degrees, ";
-    packet += "Altitude: " + String(altitude, 3) + " meters";
-  } else {
-    packet += "Latitude: N/A, ";
-    packet += "Longitude: N/A, ";
-    packet += "Altitude: N/A";
-  }
-  Serial.println(packet);
-  return packet;
-}
-
-float convertDegMinToDecDeg(float degMin) {
-  int degrees = (int)(degMin / 100);
-  float minutes = degMin - (degrees * 100);
-  return degrees + (minutes / 60.0);
-}
-
-float convertMilliGsToMpS(float milliGs){
-  float metersPerSecond = milliGs * 9.80665 / 1000000;
-  return metersPerSecond;
 }
